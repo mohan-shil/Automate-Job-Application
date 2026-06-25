@@ -1,0 +1,13 @@
+{
+  "name": "automate-job-application",
+  "version": "0.1.0",
+  "description": "LinkedIn job application automation using Playwright and JavaScript.",
+  "main": "src/apply-linkedin.js",
+  "scripts": {
+    "start": "node src/apply-linkedin.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.1.4",
+    "playwright": "^1.48.0"
+  }
+}
