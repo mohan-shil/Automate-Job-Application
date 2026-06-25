@@ -8,8 +8,19 @@ const password = process.env.LINKEDIN_PASSWORD;
 const jobUrl = process.env.LINKEDIN_JOB_URL;
 const resumePath = process.env.LINKEDIN_RESUME_PATH || path.join(process.cwd(), 'resume.pdf');
 
+const isCodespaces = process.env.CODESPACES === 'true';
+const requestedHeaded = process.argv.includes('--headed');
+const shouldUseHeaded = requestedHeaded && !isCodespaces;
+const headlessMode = !shouldUseHeaded;
+
+if (isCodespaces && requestedHeaded) {
+  console.warn('Detected GitHub Codespaces. Ignoring --headed and forcing headless mode.');
+}
+
+console.log(`Playwright launch mode: ${headlessMode ? 'headless' : 'headed'}${isCodespaces ? ' (Codespaces detected)' : ''}`);
+
 if (!email || !password || !jobUrl) {
-  console.error('\nMissing environment variables.\nPlease set LINKEDIN_EMAIL, LINKEDIN_PASSWORD, and LINKEDIN_JOB_URL.');
+  console.error('\nMissing environment variables.\nPlease copy .env.example to .env and set LINKEDIN_EMAIL, LINKEDIN_PASSWORD, and LINKEDIN_JOB_URL in .env.');
   process.exit(1);
 }
 
@@ -98,18 +109,33 @@ async function applyToJob(page) {
   throw new Error('Could not complete the application flow automatically. LinkedIn may have changed the UI or require extra fields.');
 }
 
-(async () => {
-  const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
+async function createBrowser() {
   try {
+    return await chromium.launch({ headless: headlessMode });
+  } catch (launchError) {
+    console.error('\nBrowser launch error:', launchError.message || launchError);
+    if (isCodespaces) {
+      console.error('GitHub Codespaces detected: ensure headless mode is used and the environment supports Playwright browsers.');
+    }
+    process.exit(1);
+  }
+}
+
+(async () => {
+  let browser;
+  try {
+    browser = await createBrowser();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
     await login(page);
     await applyToJob(page);
     console.log('Application flow finished. Please verify the result in the browser.');
   } catch (error) {
     console.error('\nAutomation error:', error.message || error);
   } finally {
-    await browser.close();
+    if (browser) {
+      await browser.close();
+    }
   }
 })();

@@ -24,7 +24,9 @@ npx playwright install
 cp .env.example .env
 ```
 
-4. Put your resume file in the path referenced by `LINKEDIN_RESUME_PATH`.
+4. Open `.env` and fill in your actual values. Do not store real credentials in `.env.example` or commit `.env`.
+
+5. Put your resume file in the path referenced by `LINKEDIN_RESUME_PATH`.
 
 ## Run
 
@@ -45,6 +47,7 @@ npm start
 - If the target job uses a non-`Easy Apply` flow, this script will not work as-is.
 - Update selectors in `src/apply-linkedin.js` if LinkedIn changes the page structure.
 - Use `LINKEDIN_PHONE` in `.env` if the job form requires a phone number.
+- If your resume path contains spaces, wrap the path value in quotes in `.env`.
 
 ## Notes
 

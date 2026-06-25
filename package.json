@@ -4,7 +4,8 @@
   "description": "LinkedIn job application automation using Playwright and JavaScript.",
   "main": "src/apply-linkedin.js",
   "scripts": {
-    "start": "node src/apply-linkedin.js"
+    "start": "node src/apply-linkedin.js",
+    "headed": "node src/apply-linkedin.js --headed"
   },
   "dependencies": {
     "dotenv": "^16.1.4",
