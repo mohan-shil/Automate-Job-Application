@@ -37,4 +37,4 @@ No code submits applications or operates LinkedIn pages. The legacy submission e
 
 ## Remaining work
 
-Configure Google service-account credentials and share the spreadsheet, configure/share the Notion integration page, then execute and verify live sync. Add broader document-format fixtures and live public board checks where permitted. The GitHub Actions workflow runs clean install, build, and tests on Node 20.
+Configure Google service-account credentials and share the spreadsheet, configure/share the Notion integration page, then execute and verify live sync. Add broader document-format fixtures and live public board checks where permitted. GitHub Actions run `43042612483` on commit `3a91b2f5a64087647a6e7bae684d387704b1b6d5` passed clean install, build, and tests on Node 20.
