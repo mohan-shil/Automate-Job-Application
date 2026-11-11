@@ -1,32 +1,40 @@
 # Architecture and implementation report
 
-## Initial architecture
+## System design
 
-The MVP is a local-first Node.js 20+ TypeScript CLI. It separates user commands (`src/cli.ts`), SQLite persistence (`src/db`), CV parsing and matching (`src/services`), and external adapters (`src/integrations`). SQLite is the source of truth for CV metadata, preferences, discovered jobs, application status, and activity events. Google Sheets and Notion are optional reporting sinks.
+The application is a local-first Node.js 20+ TypeScript CLI. CLI commands coordinate typed services, local SQLite persistence, permitted public job source adapters, and optional integration sinks. SQLite is the source of truth for CVs, preferences, discovered jobs, application state, and activity events.
 
-## Components and decisions
+## Components
 
-- **CV management:** `pdf-parse`, Mammoth, and plain text readers extract CV content. CV text remains in local SQLite. Extraction errors are surfaced instead of fabricating content.
-- **Matching and drafting:** OpenAI structured JSON is used when configured. Deterministic local keyword overlap provides an offline fallback. Prompt instructions prohibit inventing qualifications.
-- **Discovery:** Playwright reads public LinkedIn job search and detail pages. Auth walls, CAPTCHA, security challenge, 401/403/429 lead to a stop. No authenticated session or submission code is present.
-- **Application workflow:** Every application submission remains manual. `application:approve --confirm` only records the user's attestation after they submitted externally.
-- **Persistence:** SQLite with WAL, URL uniqueness for duplicate prevention, activity log, and explicit status values.
-- **Google Sheets:** Google Sheets API appends new records with headers and URL-based duplicate detection.
-- **Notion:** Notion API appends daily report blocks to the configured page.
-- **Configuration:** dotenv environment variables, `.env.example`, ignored secrets/database paths.
+- **CLI (`src/cli.ts`):** CV import/list, preferences, configured job discovery, user-provided LinkedIn job import, job review, cover letter generation, manual status updates, and a daily run.
+- **CV parsing (`src/services/cv.ts`):** PDF, DOCX, TXT, and Markdown text extraction. CV content is retained locally in SQLite. The tested sample path used TXT.
+- **Matching (`src/services/matching.ts`):** OpenAI structured output when configured; deterministic local keyword overlap otherwise. The prompt restricts claims to supplied facts.
+- **Permitted job sources (`src/integrations/jobs.ts`):** Greenhouse public Job Board API and Lever public Postings API. Integration tests use mocked responses; live source access depends on the employer board identifiers and network availability.
+- **LinkedIn handling:** no LinkedIn browser automation, scraping, authentication, or page fetching. `job:add` validates a user-provided LinkedIn job URL and saves the title, company, location, and description supplied by the user.
+- **SQLite (`src/db/database.ts`):** WAL mode, normalized CV/preferences/job/activity tables, unique job URL constraint, and explicit application statuses. The persistence integration test closes and reopens a file-backed database.
+- **Google Sheets (`src/integrations/google-sheets.ts`):** Google Sheets API appends tracking data and deduplicates by URL. Live access/writes require the supplied sheet to be shared with the configured service account; not tested in this environment.
+- **Notion (`src/integrations/notion.ts`):** appends daily report blocks to the configured page. Live access/writes require a Notion token and page sharing; not tested in this environment.
+- **Configuration:** environment variables and `.env.example`. `.env`, SQLite data, and generated files are ignored by Git.
 
-## Integrations and access verification
+## Safety decisions
 
-- GitHub `mohan-shil/Automate-Job-Application`: verified through connected GitHub app; public repository, push permission available. Local checkout had no commits, tracked files, or remote configured.
-- Google Sheet `1nuTdTMZV_S-zWidVnccYvK5FhEDgScsJxUefP7M9WzY`: no Sheets connector or Google credentials exposed in this session; access and sharing could not be verified.
-- Notion page `4155867dcfd280c98c62e51d8c904d6e`: no Notion connector/token exposed in this session; access and page sharing could not be verified.
+No code submits applications or operates LinkedIn pages. The legacy submission entry point now exits with a message. Applications are submitted manually by the user; `application:approve --confirm` only records an application that the user says they already submitted. There is no CAPTCHA, MFA, login challenge, or access-control bypass logic.
 
-## MVP implementation status
+## External resources and access
 
-Implemented: CLI, local SQLite schema, CV import for PDF/DOCX/TXT/MD, preference storage, LinkedIn public listing discovery, keyword/OpenAI matching, cover letter generation, Google Sheets and Notion adapters, daily run command, status management, duplicate prevention, environment template, README, and activity log.
+- GitHub repository `mohan-shil/Automate-Job-Application`: connected GitHub access confirmed and changes published to `main` while preserving repository history and `CV_materials`.
+- Google Sheet ID `1nuTdTMZV_S-zWidVnccYvK5FhEDgScsJxUefP7M9WzY`: ID is configured; no Google connector credentials were present, so access could not be verified.
+- Notion page ID `4155867dcfd280c98c62e51d8c904d6e`: ID is configured; no Notion connector credentials were present, so access could not be verified and the requested live report could not be written.
 
-Not implemented: automatic form filling/submission, monitoring authenticated application inboxes, interview calendar integrations, browser UI, robust vendor-independent ATS ingestion, extensive retries/telemetry, and live end-to-end integration verification. Applications remain manual and explicit approval is required for every one.
+## Verified implementation results
 
-## Testing and release log
+- `npm ci --no-audit --no-fund`: passed.
+- `npm run build`: passed.
+- `npm test`: 5 test files, 11 tests passed.
+- `node dist/cli.js --help`: passed; all intended CLI commands are registered. This includes SQLite insert/dedup/status behavior, file-backed persistence after reopen, sample CV parsing and matching, mocked Greenhouse/Lever responses, LinkedIn URL validation without a fetch, and missing-credentials errors for Sheets/Notion.
+- Live LinkedIn discovery: intentionally not implemented.
+- Live Google Sheets and Notion synchronization: not verified; credentials were unavailable.
 
-Initial report recorded before dependency installation and tests. Test outcomes, commits, and later errors/resolutions are appended to `docs/IMPLEMENTATION-LOG.md` during the development session.
+## Remaining work
+
+Configure Google service-account credentials and share the spreadsheet, configure/share the Notion integration page, then execute and verify live sync. Add broader document-format fixtures and live public board checks where permitted. The GitHub Actions workflow runs clean install, build, and tests on Node 20.

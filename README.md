@@ -1,28 +1,22 @@
 # Automate Job Application
 
-> Application submission is intentionally manual. The former login/password and final-submit automation is disabled; use this CLI to discover jobs, prepare materials, and track applications you submit yourself.
-
-A local-first job discovery and application preparation CLI. The agent finds publicly accessible LinkedIn job listings, scores them against your CVs, drafts cover letters, and tracks opportunities in SQLite. **It never submits applications.** You review and submit every application yourself, then confirm the event in the CLI. LinkedIn CAPTCHA, MFA, login challenges, and access restrictions are not bypassed.
+A local-first job discovery and application preparation CLI. **It does not submit applications or automate LinkedIn pages.** LinkedIn listings can be added from a URL and details you provide; job discovery is available through public Greenhouse and Lever job board APIs.
 
 ## Requirements
 
 - Node.js 20+
-- Google Cloud service account credentials (optional Sheets sync)
-- Notion internal integration (optional reports)
-- OpenAI API key (optional; keyword scoring works without it)
+- OpenAI API key (optional; local keyword scoring works without it)
+- Google Cloud service account and Notion integration (optional)
 
-## Setup
+## Install and configure
 
 ```sh
-npm install
+npm ci
 cp .env.example .env
-# Edit .env with credentials for integrations you have configured
-npm run start -- cv:add ~/Documents/cv.pdf --name "Backend Engineer"
-npm run start -- preferences:set --file preferences.json
-npm run start -- search
+# Configure only integrations you intend to use
 ```
 
-`preferences.json` example:
+Create a preferences file:
 
 ```json
 {
@@ -35,36 +29,57 @@ npm run start -- search
 }
 ```
 
-## Commands
+Import your own CV and preferences, then discover jobs from the public boards you configure:
 
-```text
-cv:add <file> [--name <name>]       Parse and save PDF, DOCX, TXT, or MD CV
-cv:list                             List stored CVs
-preferences:set --file <file>       Save role, skills, location and work preferences
-preferences:show                    Show preferences
-search [--limit <n>] [--sync-sheet] Discover public LinkedIn listings and score them
-jobs:list [--status <status>]       Review tracked jobs
-job:prepare <id>                    Generate a truthful cover letter for review
-application:approve <id> --confirm  Record a submission you made yourself
-job:update <id> --status <status>   Record an interview, rejection, offer or withdrawal
-daily [--limit <n>]                 Run discovery, scoring and configured integrations
+```sh
+npm run start -- cv:add ~/Documents/cv.pdf --name "Backend Engineer"
+npm run start -- preferences:set --file preferences.json
+GREENHOUSE_BOARDS=acme,example npm run start -- search
 ```
 
-The first run creates `data/jobs.sqlite`. CV text is stored locally in SQLite to enable matching. Keep `data/` private and back it up securely. `.env` and database files are ignored by Git.
+You can also search one board explicitly with `discover:greenhouse <board>` or `discover:lever <company>`. These query public employer job board APIs, not LinkedIn. To add a LinkedIn listing, prepare a JSON file with the listing URL and details you collected:
+
+```json
+{
+  "title": "Backend Engineer",
+  "company": "Example Co",
+  "url": "https://www.linkedin.com/jobs/view/123456789",
+  "location": "Warsaw, Poland",
+  "description": "Paste the job description here"
+}
+```
+
+Then run `npm run start -- job:add job.json`. The command validates the URL and never opens or fetches LinkedIn.
+
+## CLI commands
+
+```text
+cv:add <file> [--name <name>]       Import PDF, DOCX, TXT, or MD CV
+cv:list                             List CVs
+preferences:set --file <file>       Save search preferences
+preferences:show                    Show preferences
+search [--limit <n>] [--sync-sheet] Search configured public Greenhouse/Lever boards
+job:add <file>                      Add a user-provided LinkedIn job record
+jobs:list [--status <status>]       Review tracked jobs
+job:prepare <id>                    Generate a cover letter for review
+application:approve <id> --confirm  Record an application you already submitted yourself
+job:update <id> --status <status>   Record interview, rejection, offer, or withdrawal
+daily [--limit <n>]                 Discover, score and sync configured integrations
+```
 
 ## Integrations
 
-- **LinkedIn:** Playwright loads public job search and detail pages. Search is best effort and may stop if LinkedIn requires authentication or restricts access. The tool exits on common block/challenge signals and does not attempt to evade them.
-- **OpenAI:** Optional. Matching requests send CV text and job descriptions to the configured OpenAI API. Without a key, local keyword overlap provides a rough baseline. Verify all generated scores and letters.
-- **Google Sheets:** Set `GOOGLE_SHEET_ID` and `GOOGLE_APPLICATION_CREDENTIALS`; share the target spreadsheet with the service account email. The first sync adds tracking headers and appends new jobs, deduplicating by URL.
-- **Notion:** Set `NOTION_API_KEY` and `NOTION_PAGE_ID`; share the project page with the integration. Daily runs append a report.
+- **LinkedIn:** no browser automation or scraping. Import a job URL and user-provided title, company, location, and description via `job:add`.
+- **Greenhouse:** set `GREENHOUSE_BOARDS` to comma-separated public board identifiers, or invoke `discover:greenhouse`.
+- **Lever:** set `LEVER_COMPANIES` to comma-separated public company identifiers, or invoke `discover:lever`.
+- **OpenAI:** set `OPENAI_API_KEY` for model-based matching and cover letters. Otherwise local keyword overlap is used. When enabled, CV and job text is sent to OpenAI.
+- **Google Sheets:** `GOOGLE_SHEET_ID` is prefilled with your supplied sheet ID. Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON path and grant that service account access to the sheet.
+- **Notion:** `NOTION_PAGE_ID` is prefilled with your supplied page ID. Set `NOTION_API_KEY` and share the page with the integration.
 
-The provided Google Sheet ID and Notion page ID are prefilled in `.env.example`. The credentials and page sharing still need to be configured; the current development environment has no connected Sheets or Notion account for access verification.
+If Sheets or Notion credentials are absent, `daily` skips those integrations with a message. Live access and writes have not been verified without credentials.
 
-## Safety and scope
+## Data and application safety
 
-- No automatic application submission or unattended form completion.
-- No password, session, MFA, CAPTCHA, or challenge bypass.
-- Application statuses are updated only through an explicit CLI action.
-- This is an MVP: LinkedIn page markup and anonymous access are not guaranteed. Use only in ways permitted by LinkedIn's current terms and your account access.
-- CV parsing is local. The OpenAI matching/letter feature sends relevant CV and job text to OpenAI when enabled.
+SQLite is the source of truth and is stored under `data/` by default. CV text is stored locally. `.env`, `data/`, and database files are Git-ignored. Use `DATABASE_PATH` to change the database location.
+
+The agent never submits applications. `application:approve --confirm` only records an application you personally reviewed and submitted. LinkedIn CAPTCHA, MFA, login challenges, and access restrictions are never accessed or bypassed.

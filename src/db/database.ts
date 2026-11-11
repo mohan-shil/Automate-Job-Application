@@ -49,7 +49,16 @@ export class JobDatabase {
   upsertJob(job: Job): boolean {
     const result = this.db.prepare(`INSERT OR IGNORE INTO jobs
       (id,title,company,url,description,location,salary,source,match_score,selected_cv_id,status,discovered_at,applied_at,notes,follow_up_at)
-      VALUES (@id,@title,@company,@url,@description,@location,@salary,@source,@matchScore,@selectedCvId,@status,@discoveredAt,@appliedAt,@notes,@followUpAt)`).run(job);
+      VALUES (@id,@title,@company,@url,@description,@location,@salary,@source,@matchScore,@selectedCvId,@status,@discoveredAt,@appliedAt,@notes,@followUpAt)`).run({
+        ...job,
+        location: job.location ?? null,
+        salary: job.salary ?? null,
+        matchScore: job.matchScore ?? null,
+        selectedCvId: job.selectedCvId ?? null,
+        appliedAt: job.appliedAt ?? null,
+        notes: job.notes ?? null,
+        followUpAt: job.followUpAt ?? null,
+      });
     return result.changes > 0;
   }
   listJobs(status?: string): Job[] {

@@ -4,7 +4,9 @@
   "private": true,
   "description": "Human-approved job discovery and application preparation agent",
   "type": "module",
-  "bin": { "job-agent": "dist/cli.js" },
+  "bin": {
+    "job-agent": "dist/cli.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "tsx src/cli.ts",
@@ -15,22 +17,24 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@notionhq/client": "^4.0.2",
     "better-sqlite3": "^12.2.0",
     "commander": "^14.0.0",
     "dotenv": "^16.6.1",
-    "openai": "^5.12.2",
-    "playwright": "^1.54.2",
-    "pdf-parse": "^1.1.1",
-    "mammoth": "^1.10.0",
     "googleapis": "^159.0.0",
-    "@notionhq/client": "^5.0.0",
-    "zod": "^4.0.17"
+    "mammoth": "^1.10.0",
+    "openai": "^5.12.2",
+    "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.3.0",
+    "@types/pdf-parse": "^1.1.5",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
